@@ -14,11 +14,14 @@ struct Index {
   ];
 
   private toggleTodo(index: number): void {
-    const next = [...this.todos];
-    next[index] = {
-      ...next[index],
-      done: !next[index].done
-    };
+    const next: TodoItem[] = [];
+    for (let i = 0; i < this.todos.length; i++) {
+      const item = this.todos[i];
+      next.push({
+        title: item.title,
+        done: i === index ? !item.done : item.done
+      });
+    }
     this.todos = next;
   }
 

@@ -23,6 +23,20 @@ A simple HarmonyOS ArkUI (ArkTS) sample app with:
 3. If your SDK version is not `5.0.0(12)`, update the root `build-profile.json5`.
 4. Run on an emulator or device.
 
+## Build Script
+
+- Command line: `powershell -ExecutionPolicy Bypass -File .\build.ps1`
+- Double click: `build.bat`
+- Clean build: `powershell -ExecutionPolicy Bypass -File .\build.ps1 -Clean`
+- Release mode: `powershell -ExecutionPolicy Bypass -File .\build.ps1 -BuildMode release`
+
+The script automatically:
+
+- uses DevEco Studio's bundled JDK
+- creates the local `.deveco-sdk` compatibility mapping
+- runs `hvigor assembleHap`
+- writes HAP outputs to `entry\build\default\outputs\default`
+
 ## Next steps
 
 - Add a second page and route navigation

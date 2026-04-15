@@ -1,6 +1,6 @@
 {
   "app": {
-    "bundleName": "com.example.harmonyarkuidemo",
+    "bundleName": "com.hauwei.arkUIdemo",
     "vendor": "example",
     "versionCode": 1000000,
     "versionName": "1.0.0",
