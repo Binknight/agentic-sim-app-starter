@@ -57,7 +57,7 @@
           "codex.cmd",
           "exec",
           "--yolo",
-          "{{TASK_PROMPT}}"
+          "-"
         ],
         "env": {},
         "supports_resume": false
