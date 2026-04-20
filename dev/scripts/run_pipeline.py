@@ -67,6 +67,13 @@ def build_runtime_paths(repo_root: Path, config: dict[str, Any], scenario_key: s
     }
 
 
+def write_task_prompt_snapshot(repo_root: Path, task_prompt: str) -> Path:
+    spec_root = ensure_dir(repo_root / "dev" / "spec")
+    prompt_path = spec_root / "task_prompt.txt"
+    prompt_path.write_text(task_prompt, encoding="utf-8")
+    return prompt_path
+
+
 def ensure_base_branch(
     repo_root: Path,
     config: dict[str, Any],
@@ -290,6 +297,8 @@ def main() -> int:
         build_command=build_command,
     )
     task_prompt = render_template(template_text, prompt_variables)
+    task_prompt_path = write_task_prompt_snapshot(repo_root, task_prompt)
+    logger.info("已输出任务 Prompt 快照: %s", task_prompt_path)
 
     state = {
         "scenario_id": scenario_id,
