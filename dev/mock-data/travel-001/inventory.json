@@ -1,7 +1,4 @@
-import { TravelProduct } from '../models/AppModels';
-
-// Generated from dev/mock-data/travel-001/inventory.json
-export const travelProductsMock: TravelProduct[] = [
+[
   {
     "id": "hotel-1",
     "serviceType": "hotel",
@@ -16,33 +13,16 @@ export const travelProductsMock: TravelProduct[] = [
     "priceLabel": "到手价",
     "cover": "空中露台",
     "coverSubtext": "双层大堂与城市夜景",
-    "tags": [
-      "低价好评",
-      "免费取消",
-      "含双早"
-    ],
+    "tags": ["低价好评", "免费取消", "含双早"],
     "policyTag": "20:00 前免费取消",
     "inventoryStatus": "仅剩 4 间",
     "timelineStart": "14:00",
     "timelineEnd": "次日12:00",
     "duration": "2 晚连住",
     "stopInfo": "门店闪住",
-    "facilities": [
-      "自助早餐",
-      "健身房",
-      "洗衣房",
-      "行政酒廊"
-    ],
-    "detailPoints": [
-      "商圈核心位置",
-      "入住退房效率高",
-      "适合商务与周末微度假"
-    ],
-    "notices": [
-      "到店需登记证件",
-      "加床需提前沟通",
-      "停车位有限"
-    ],
+    "facilities": ["自助早餐", "健身房", "洗衣房", "行政酒廊"],
+    "detailPoints": ["商圈核心位置", "入住退房效率高", "适合商务与周末微度假"],
+    "notices": ["到店需登记证件", "加床需提前沟通", "停车位有限"],
     "packages": [
       {
         "id": "hotel-1-p1",
@@ -52,11 +32,7 @@ export const travelProductsMock: TravelProduct[] = [
         "policy": "免费取消",
         "inventory": "仅剩 2 间",
         "provider": "云栖直营",
-        "highlights": [
-          "双早",
-          "极速确认",
-          "可延迟退房"
-        ],
+        "highlights": ["双早", "极速确认", "可延迟退房"],
         "instantConfirm": true
       },
       {
@@ -67,10 +43,7 @@ export const travelProductsMock: TravelProduct[] = [
         "policy": "限时不可退",
         "inventory": "可订",
         "provider": "优选供应商",
-        "highlights": [
-          "亲子入住",
-          "送欢迎水果"
-        ],
+        "highlights": ["亲子入住", "送欢迎水果"],
         "instantConfirm": true
       }
     ]
@@ -89,32 +62,16 @@ export const travelProductsMock: TravelProduct[] = [
     "priceLabel": "起价",
     "cover": "亲子主题房",
     "coverSubtext": "接驳车与儿童活动区",
-    "tags": [
-      "亲子精选",
-      "接送机",
-      "早餐丰富"
-    ],
+    "tags": ["亲子精选", "接送机", "早餐丰富"],
     "policyTag": "当日 18:00 前可取消",
     "inventoryStatus": "热销中",
     "timelineStart": "15:00",
     "timelineEnd": "次日12:00",
     "duration": "1 晚起订",
     "stopInfo": "亲子优选",
-    "facilities": [
-      "接驳车",
-      "儿童乐园",
-      "家庭房",
-      "泳池"
-    ],
-    "detailPoints": [
-      "适合乐园游客",
-      "配套齐全",
-      "有家庭房和儿童餐"
-    ],
-    "notices": [
-      "接驳需提前预约",
-      "节假日价格波动较大"
-    ],
+    "facilities": ["接驳车", "儿童乐园", "家庭房", "泳池"],
+    "detailPoints": ["适合乐园游客", "配套齐全", "有家庭房和儿童餐"],
+    "notices": ["接驳需提前预约", "节假日价格波动较大"],
     "packages": [
       {
         "id": "hotel-2-p1",
@@ -124,10 +81,7 @@ export const travelProductsMock: TravelProduct[] = [
         "policy": "免费取消",
         "inventory": "可订",
         "provider": "览海直营",
-        "highlights": [
-          "含双早",
-          "儿童洗漱包"
-        ],
+        "highlights": ["含双早", "儿童洗漱包"],
         "instantConfirm": true
       },
       {
@@ -138,10 +92,7 @@ export const travelProductsMock: TravelProduct[] = [
         "policy": "免费改期一次",
         "inventory": "仅剩 1 间",
         "provider": "星舰供应商",
-        "highlights": [
-          "迷你吧",
-          "机场接送"
-        ],
+        "highlights": ["迷你吧", "机场接送"],
         "instantConfirm": true
       }
     ]
@@ -160,30 +111,16 @@ export const travelProductsMock: TravelProduct[] = [
     "priceLabel": "含税价",
     "cover": "早班直飞",
     "coverSubtext": "商务出行常用班次",
-    "tags": [
-      "准点率高",
-      "可改签",
-      "含托运"
-    ],
+    "tags": ["准点率高", "可改签", "含托运"],
     "policyTag": "起飞前 2 小时可改",
     "inventoryStatus": "余票充足",
     "timelineStart": "07:35",
     "timelineEnd": "09:50",
     "duration": "2小时15分",
     "stopInfo": "直飞",
-    "facilities": [
-      "20kg 托运",
-      "值机提醒",
-      "延误保障"
-    ],
-    "detailPoints": [
-      "适合上午会议",
-      "出发到达机场交通便捷"
-    ],
-    "notices": [
-      "含民航发展基金",
-      "改签差价需补"
-    ],
+    "facilities": ["20kg 托运", "值机提醒", "延误保障"],
+    "detailPoints": ["适合上午会议", "出发到达机场交通便捷"],
+    "notices": ["含民航发展基金", "改签差价需补"],
     "packages": [
       {
         "id": "flight-1-p1",
@@ -193,10 +130,7 @@ export const travelProductsMock: TravelProduct[] = [
         "policy": "支持有偿改签",
         "inventory": "剩余 9 张",
         "provider": "航司直营",
-        "highlights": [
-          "含托运",
-          "优先值机"
-        ],
+        "highlights": ["含托运", "优先值机"],
         "instantConfirm": true
       },
       {
@@ -207,10 +141,7 @@ export const travelProductsMock: TravelProduct[] = [
         "policy": "免费改退",
         "inventory": "剩余 3 张",
         "provider": "航司直营",
-        "highlights": [
-          "休息室",
-          "快速安检"
-        ],
+        "highlights": ["休息室", "快速安检"],
         "instantConfirm": true
       }
     ]
@@ -229,29 +160,16 @@ export const travelProductsMock: TravelProduct[] = [
     "priceLabel": "含税价",
     "cover": "午间出发",
     "coverSubtext": "适合弹性行程",
-    "tags": [
-      "价格低",
-      "大兴出发",
-      "里程累积"
-    ],
+    "tags": ["价格低", "大兴出发", "里程累积"],
     "policyTag": "限时低价",
     "inventoryStatus": "剩余 5 张",
     "timelineStart": "11:20",
     "timelineEnd": "13:35",
     "duration": "2小时15分",
     "stopInfo": "直飞",
-    "facilities": [
-      "免费选座",
-      "行李额可购"
-    ],
-    "detailPoints": [
-      "价格友好",
-      "到浦东后可接驳地铁和磁浮"
-    ],
-    "notices": [
-      "不含托运行李",
-      "退票手续费较高"
-    ],
+    "facilities": ["免费选座", "行李额可购"],
+    "detailPoints": ["价格友好", "到浦东后可接驳地铁和磁浮"],
+    "notices": ["不含托运行李", "退票手续费较高"],
     "packages": [
       {
         "id": "flight-2-p1",
@@ -261,10 +179,7 @@ export const travelProductsMock: TravelProduct[] = [
         "policy": "限时不可退",
         "inventory": "剩余 5 张",
         "provider": "东航直营",
-        "highlights": [
-          "免费选座",
-          "次卡可抵扣"
-        ],
+        "highlights": ["免费选座", "次卡可抵扣"],
         "instantConfirm": true
       }
     ]
@@ -283,30 +198,16 @@ export const travelProductsMock: TravelProduct[] = [
     "priceLabel": "二等座",
     "cover": "准点高铁",
     "coverSubtext": "市区往返更省心",
-    "tags": [
-      "直达",
-      "可在线选座",
-      "电子客票"
-    ],
+    "tags": ["直达", "可在线选座", "电子客票"],
     "policyTag": "发车前可退改",
     "inventoryStatus": "候补中",
     "timelineStart": "08:00",
     "timelineEnd": "12:29",
     "duration": "4小时29分",
     "stopInfo": "直达",
-    "facilities": [
-      "电子客票",
-      "选座服务",
-      "候补购票"
-    ],
-    "detailPoints": [
-      "适合市区出发",
-      "无需提前太久到站"
-    ],
-    "notices": [
-      "部分时段票源紧张",
-      "儿童票需实名"
-    ],
+    "facilities": ["电子客票", "选座服务", "候补购票"],
+    "detailPoints": ["适合市区出发", "无需提前太久到站"],
+    "notices": ["部分时段票源紧张", "儿童票需实名"],
     "packages": [
       {
         "id": "train-1-p1",
@@ -316,10 +217,7 @@ export const travelProductsMock: TravelProduct[] = [
         "policy": "发车前可退",
         "inventory": "候补 3 分钟内反馈",
         "provider": "12306 联运",
-        "highlights": [
-          "电子客票",
-          "支持候补"
-        ],
+        "highlights": ["电子客票", "支持候补"],
         "instantConfirm": false
       },
       {
@@ -330,10 +228,7 @@ export const travelProductsMock: TravelProduct[] = [
         "policy": "发车前可退",
         "inventory": "剩余 2 张",
         "provider": "12306 联运",
-        "highlights": [
-          "宽座椅",
-          "静音车厢优先"
-        ],
+        "highlights": ["宽座椅", "静音车厢优先"],
         "instantConfirm": true
       }
     ]
@@ -352,30 +247,16 @@ export const travelProductsMock: TravelProduct[] = [
     "priceLabel": "单人票",
     "cover": "热门乐园",
     "coverSubtext": "门票与酒店联动推荐",
-    "tags": [
-      "官方票源",
-      "快速入园",
-      "亲子热卖"
-    ],
+    "tags": ["官方票源", "快速入园", "亲子热卖"],
     "policyTag": "未预约可退",
     "inventoryStatus": "周末紧张",
     "timelineStart": "09:00",
     "timelineEnd": "21:00",
     "duration": "全天可玩",
     "stopInfo": "官方直连",
-    "facilities": [
-      "入园预约",
-      "改期提醒",
-      "亲子服务"
-    ],
-    "detailPoints": [
-      "适合亲子与情侣",
-      "可与周边酒店联动"
-    ],
-    "notices": [
-      "需实名预约入园",
-      "节假日门票价格不同"
-    ],
+    "facilities": ["入园预约", "改期提醒", "亲子服务"],
+    "detailPoints": ["适合亲子与情侣", "可与周边酒店联动"],
+    "notices": ["需实名预约入园", "节假日门票价格不同"],
     "packages": [
       {
         "id": "ticket-1-p1",
@@ -385,12 +266,9 @@ export const travelProductsMock: TravelProduct[] = [
         "policy": "未预约可退",
         "inventory": "可订",
         "provider": "官方票仓",
-        "highlights": [
-          "快速确认",
-          "扫码入园"
-        ],
+        "highlights": ["快速确认", "扫码入园"],
         "instantConfirm": true
       }
     ]
   }
-];
+]

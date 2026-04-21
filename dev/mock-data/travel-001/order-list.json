@@ -1,7 +1,4 @@
-import { MemberProfile, OrderCard } from '../models/AppModels';
-
-// Generated from dev/mock-data/travel-001/order-list.json and member-profile.json
-export const orderMockList: OrderCard[] = [
+[
   {
     "id": "order-1001",
     "serviceType": "hotel",
@@ -35,12 +32,4 @@ export const orderMockList: OrderCard[] = [
     "actionLabel": "再次预订",
     "reminder": "可从历史订单快速复购"
   }
-];
-
-export const memberProfileMock: MemberProfile = {
-  "name": "王晨",
-  "level": "白金会员",
-  "points": 4860,
-  "wallet": 320,
-  "coupons": 8
-};
+]

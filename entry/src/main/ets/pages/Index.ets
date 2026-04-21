@@ -45,7 +45,7 @@ struct Index {
   @State private selectedSort: string = '推荐优先';
   @State private selectedFilters: string[] = ['可取消', '高评分'];
   @State private selectedProductId: string = 'hotel-1';
-  @State private selectedPackageId: string = 'hotel-1-p1';
+  @State private selectedPackageId: string = '';
   @State private selectedOrderId: string = 'order-1001';
   @State private draftTraveler: string = '王晨';
   @State private draftPhone: string = '138 0013 8000';
@@ -83,10 +83,7 @@ struct Index {
 
   private openProduct(productId: string): void {
     this.selectedProductId = productId;
-    const product: TravelProduct | undefined = this.getSelectedProduct();
-    if (product !== undefined && product.packages.length > 0) {
-      this.selectedPackageId = product.packages[0].id;
-    }
+    this.selectedPackageId = '';
     this.currentScreen = 'detail';
   }
 
@@ -172,7 +169,7 @@ struct Index {
 
   private getSelectedPackage(): TravelPackage | undefined {
     const product: TravelProduct | undefined = this.getSelectedProduct();
-    if (product === undefined) {
+    if (product === undefined || this.selectedPackageId === '') {
       return undefined;
     }
     for (let i = 0; i < product.packages.length; i++) {
@@ -180,7 +177,7 @@ struct Index {
         return product.packages[i];
       }
     }
-    return product.packages[0];
+    return undefined;
   }
 
   private getSelectedOrder(): OrderCard | undefined {
@@ -779,6 +776,10 @@ struct Index {
 
           Column({ space: 10 }) {
             Text('可订套餐').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#102A43').width('100%')
+            Text(this.selectedPackageId === '' ? '当前未默认选择套餐，请手动选择后继续预订。' : '已为你保留当前已选套餐，可继续更换。')
+              .fontSize(12)
+              .fontColor(this.selectedPackageId === '' ? '#D64545' : '#486581')
+              .width('100%')
             ForEach(this.getSafeSelectedProduct().packages, (pkg: TravelPackage) => {
               Column({ space: 10 }) {
                 Row() {
@@ -806,7 +807,7 @@ struct Index {
 
                 Row() {
                   Text(pkg.inventory).fontSize(12).fontColor('#D64545').layoutWeight(1)
-                  Button(this.selectedPackageId === pkg.id ? '已选择' : '选择并预订')
+                  Button(this.selectedPackageId === pkg.id ? '已选择' : '选择此套餐')
                     .height(38)
                     .backgroundColor(this.selectedPackageId === pkg.id ? '#D9E8FF' : '#0A5EFF')
                     .fontColor(this.selectedPackageId === pkg.id ? '#0A5EFF' : '#FFFFFF')
@@ -818,7 +819,11 @@ struct Index {
               }
               .width('100%')
               .padding(16)
-              .backgroundColor('#F8FBFF')
+              .backgroundColor(this.selectedPackageId === pkg.id ? '#EEF4FF' : '#F8FBFF')
+              .border({
+                width: this.selectedPackageId === pkg.id ? 1 : 0,
+                color: '#0A5EFF'
+              })
               .borderRadius(20)
             }, (pkg: TravelPackage) => pkg.id)
           }
@@ -839,9 +844,21 @@ struct Index {
   @Builder
   private buildBookingScreen() {
     if (this.getSelectedProduct() === undefined || this.getSelectedPackage() === undefined) {
-      Column() {
-        Text('订单信息缺失')
+      Column({ space: 12 }) {
+        Text('请先选择酒店套餐').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#102A43')
+        Text('当前页面不再默认勾选首个套餐，请返回套餐列表后手动选择。').fontSize(13).fontColor('#5F728C')
+        Button('返回套餐列表')
+          .height(40)
+          .backgroundColor('#0A5EFF')
+          .fontColor(Color.White)
+          .onClick(() => {
+            this.currentScreen = 'detail';
+          })
       }
+      .width('100%')
+      .height('100%')
+      .justifyContent(FlexAlign.Center)
+      .padding(24)
     } else {
       Scroll() {
         Column({ space: 16 }) {
