@@ -65,7 +65,7 @@
     }
   },
   "build": {
-    "command": "powershell -ExecutionPolicy Bypass -File .\\build.ps1",
+    "command": "powershell -ExecutionPolicy Bypass -File .\\build\\build.ps1",
     "readme_reference": "README.md"
   },
   "scheduler": {
@@ -82,17 +82,18 @@
   },
   "commit": {
     "include_paths": [
-      "AppScope",
-      "entry",
-      "hvigor",
+      "baseApp/AppScope",
+      "baseApp/entry",
+      "baseApp/hvigor",
+      "baseApp/build-profile.json5",
+      "baseApp/hvigorfile.ts",
+      "baseApp/oh-package.json5",
+      "baseApp/oh-package-lock.json5",
       "dev/spec",
       "dev/mock-data",
       "README.md",
-      "build.ps1",
-      "build.bat",
-      "build-profile.json5",
-      "hvigorfile.ts",
-      "oh-package.json5"
+      "build/build.ps1",
+      "build/build.bat"
     ]
   }
 }

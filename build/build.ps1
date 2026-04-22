@@ -9,7 +9,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projectRoot = (Resolve-Path (Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..')).Path
 
 function Expand-EnvPath {
     param([string]$Value)
@@ -295,7 +295,7 @@ try {
         exit $LASTEXITCODE
     }
 
-    $outputDir = Join-Path $projectRoot 'entry\build\default\outputs\default'
+    $outputDir = Join-Path $projectRoot 'baseApp\entry\build\default\outputs\default'
     if (Test-Path -LiteralPath $outputDir) {
         Write-Host ''
         Write-Host "Build artifacts:"

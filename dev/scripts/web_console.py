@@ -73,7 +73,7 @@ def extract_hap_paths_from_log(content: str) -> list[str]:
         return []
     patterns = [
         r"(?i)([A-Z]:\\[^\r\n\"'<>|?*]+?\.hap)",
-        r"(?i)\b((?:\.\.?[\\/])?entry[\\/][^\r\n\"']+?\.hap)\b",
+        r"(?i)\b((?:\.\.?[\\/])?(?:baseApp[\\/])?entry[\\/][^\r\n\"']+?\.hap)\b",
     ]
     matches: list[str] = []
     seen: set[str] = set()
