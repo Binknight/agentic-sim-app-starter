@@ -465,7 +465,8 @@ def main() -> int:
     template_path = resolve_path(repo_root, config["paths"]["task_template"])
     template_text = read_text(template_path)
     build_command = config["build"]["command"]
-    build_target = f"{config['paths']['scenarios_root'].replace('\\', '/')}/{scenario_dir_name}"
+    scenarios_root_posix = config["paths"]["scenarios_root"].replace("\\", "/")
+    build_target = f"{scenarios_root_posix}/{scenario_dir_name}"
     prompt_variables = build_prompt_variables(
         input_path=input_path,
         scenario_payload=scenario_payload,
