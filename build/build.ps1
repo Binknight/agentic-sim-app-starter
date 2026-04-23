@@ -4,12 +4,16 @@ param(
 
     [switch]$Clean,
 
-    [string]$ConfigPath = ''
+    [string]$ConfigPath = '',
+
+    [string]$Target = 'baseApp'
 )
 
 $ErrorActionPreference = 'Stop'
 
-$projectRoot = (Resolve-Path (Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..')).Path
+$buildScriptPath = (Resolve-Path -LiteralPath $MyInvocation.MyCommand.Path).Path
+$buildDir = Split-Path -Parent $buildScriptPath
+$projectRoot = (Resolve-Path (Join-Path $buildDir '..')).Path
 
 function Expand-EnvPath {
     param([string]$Value)
@@ -19,15 +23,28 @@ function Expand-EnvPath {
     [Environment]::ExpandEnvironmentVariables($Value.Trim())
 }
 
+function Assert-PathExists {
+    param(
+        [string]$Path,
+        [string]$Message
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw $Message
+    }
+}
+
 function Get-BuildConfigPath {
     if (-not [string]::IsNullOrWhiteSpace($ConfigPath)) {
         return (Resolve-Path -LiteralPath $ConfigPath).Path
     }
-    $local = Join-Path $projectRoot 'build_new.config.json'
+
+    $local = Join-Path $buildDir 'build_new.config.json'
     if (Test-Path -LiteralPath $local) {
         return (Resolve-Path -LiteralPath $local).Path
     }
-    $example = Join-Path $projectRoot 'build_new.config.example.json'
+
+    $example = Join-Path $buildDir 'build_new.config.example.json'
     return (Resolve-Path -LiteralPath $example).Path
 }
 
@@ -75,17 +92,6 @@ function Find-HvigorJs {
         }
     }
     return $null
-}
-
-function Assert-PathExists {
-    param(
-        [string]$Path,
-        [string]$Message
-    )
-
-    if (-not (Test-Path -LiteralPath $Path)) {
-        throw $Message
-    }
 }
 
 function Build-SdkPkgJson {
@@ -230,11 +236,57 @@ function Ensure-HvigorPackages {
     }
 }
 
+function Get-TargetInfo {
+    param([string]$RawTarget)
+
+    $normalized = $RawTarget.Replace('/', '\').Trim('\')
+    if ([string]::IsNullOrWhiteSpace($normalized)) {
+        throw 'Target is empty. Use -Target baseApp or -Target scenarios/scenario001.'
+    }
+
+    $targetPath = Join-Path $projectRoot $normalized
+    Assert-PathExists -Path $targetPath -Message "Target project not found: $targetPath"
+
+    $entryDir = Join-Path $targetPath 'entry'
+    Assert-PathExists -Path $entryDir -Message "Target project is missing entry directory: $targetPath"
+
+    $safeName = ($normalized -replace '[\\/]+', '-').ToLowerInvariant()
+    $workspaceRoot = Join-Path $projectRoot 'tmp'
+    $workspacePath = Join-Path $workspaceRoot $safeName
+
+    [pscustomobject]@{
+        TargetArg       = $RawTarget
+        TargetRelative  = $normalized
+        TargetPath      = (Resolve-Path -LiteralPath $targetPath).Path
+        WorkspacePath   = $workspacePath
+        WorkspaceTarget = $workspacePath
+        OutputDir       = (Join-Path $workspacePath 'entry\build\default\outputs\default')
+    }
+}
+
+function Copy-Workspace {
+    param(
+        [string]$Source,
+        [string]$Destination
+    )
+
+    if (Test-Path -LiteralPath $Destination) {
+        Remove-Item -LiteralPath $Destination -Recurse -Force
+    }
+    New-Item -ItemType Directory -Force -Path $Destination | Out-Null
+
+    Get-ChildItem -LiteralPath $Source -Force | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination $Destination -Recurse -Force
+    }
+}
+
+$targetInfo = Get-TargetInfo -RawTarget $Target
 $config = Read-BuildConfig
 $devecoRoot = $config.DevEcoRoot
 if ([string]::IsNullOrWhiteSpace($devecoRoot)) {
-    throw 'devEcoStudioRoot is empty. Edit build_new.config.json (copy from build_new.config.example.json if needed).'
+    throw 'devEcoStudioRoot is empty. Edit build/build_new.config.json (copy from build/build_new.config.example.json if needed).'
 }
+
 $sdkRoot = Join-Path $devecoRoot $config.SdkRelativePath
 $jbrBin = Join-Path $devecoRoot 'jbr\bin'
 $openharmonyTarget = Join-Path $sdkRoot 'openharmony'
@@ -246,12 +298,14 @@ if ([string]::IsNullOrWhiteSpace($hvigorEntry)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($config.CompatSdkRoot)) {
-    throw 'compatSdkRoot is empty. Set it in build_new.config.json (e.g. under %LOCALAPPDATA%, not under the project .deveco-sdk folder).'
+    throw 'compatSdkRoot is empty. Set it in build/build_new.config.json (e.g. under %LOCALAPPDATA%, not under the project .deveco-sdk folder).'
 }
 
 $compatSdkRoot = $config.CompatSdkRoot
 
 Write-Host "Config file: $($config.ConfigPath)"
+Write-Host "Build target: $($targetInfo.TargetRelative)"
+Write-Host "Workspace: $($targetInfo.WorkspacePath)"
 Write-Host "DEVECO_SDK_HOME -> $compatSdkRoot"
 
 Assert-PathExists -Path $devecoRoot -Message "DevEco Studio not found: $devecoRoot"
@@ -266,12 +320,15 @@ Assert-PathExists -Path $hmsTarget -Message "hms SDK not found: $hmsTarget"
 
 $sdkPkgJson = Build-SdkPkgJson -SdkPkg $config.SdkPkg
 Ensure-CompatSdk -CompatSdkRoot $compatSdkRoot -OpenharmonyTarget $openharmonyTarget -HmsTarget $hmsTarget -SdkPkgJson $sdkPkgJson
-Ensure-HvigorPackages -ProjectRoot $projectRoot -DevEcoRoot $devecoRoot
+
+Copy-Workspace -Source $targetInfo.TargetPath -Destination $targetInfo.WorkspaceTarget
+Copy-Workspace -Source $buildDir -Destination (Join-Path $targetInfo.WorkspacePath 'build')
+Ensure-HvigorPackages -ProjectRoot $targetInfo.WorkspacePath -DevEcoRoot $devecoRoot
 
 $env:DEVECO_SDK_HOME = $compatSdkRoot
 $env:PATH = "$jbrBin;$env:PATH"
 $nodePathEntries = @(
-    (Join-Path $projectRoot 'node_modules'),
+    (Join-Path $targetInfo.WorkspacePath 'node_modules'),
     (Join-Path $devecoRoot 'tools\hvigor\hvigor\node_modules'),
     (Join-Path $devecoRoot 'tools\hvigor\hvigor-ohos-plugin\node_modules')
 ) | Where-Object { Test-Path -LiteralPath $_ }
@@ -281,7 +338,7 @@ if (-not [string]::IsNullOrWhiteSpace($env:NODE_PATH)) {
 }
 $env:NODE_PATH = (($nodePathEntries + $existingNodePathEntries) | Select-Object -Unique) -join ';'
 
-Push-Location $projectRoot
+Push-Location $targetInfo.WorkspacePath
 try {
     if ($Clean) {
         node $hvigorEntry clean --no-daemon
@@ -295,11 +352,10 @@ try {
         exit $LASTEXITCODE
     }
 
-    $outputDir = Join-Path $projectRoot 'baseApp\entry\build\default\outputs\default'
-    if (Test-Path -LiteralPath $outputDir) {
+    if (Test-Path -LiteralPath $targetInfo.OutputDir) {
         Write-Host ''
         Write-Host "Build artifacts:"
-        Get-ChildItem -LiteralPath $outputDir -Filter *.hap |
+        Get-ChildItem -LiteralPath $targetInfo.OutputDir -Filter *.hap |
             Sort-Object LastWriteTime -Descending |
             ForEach-Object { Write-Host "  $($_.FullName)" }
     }

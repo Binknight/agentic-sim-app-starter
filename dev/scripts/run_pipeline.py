@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -18,13 +20,11 @@ from common import (
     infer_scenario_id,
     is_process_running,
     load_runtime_state,
-    now_local_compact_minute,
     normalize_app_key,
     now_local_iso,
     read_json,
     read_text,
     render_template,
-    reset_dir,
     resolve_path,
     run_command,
     sanitize_name,
@@ -53,10 +53,76 @@ def load_config(config_path: Path) -> dict[str, Any]:
     return read_json(config_path)
 
 
-def prepare_logger(repo_root: Path, config: dict[str, Any], scenario_name: str) -> tuple[Any, Path]:
-    logs_root = resolve_path(repo_root, config["paths"]["logs_root"])
-    ensure_dir(logs_root)
-    log_file = logs_root / f"pipeline-{sanitize_name(scenario_name)}-{utc_now_compact()}.log"
+def normalize_scenario_dir_name(raw_scenario_id: str) -> str:
+    text = sanitize_name(raw_scenario_id)
+    if not text:
+        raise ValueError("场景编号不能为空")
+    if text.startswith("scenario"):
+        return text
+    return f"scenario{text}"
+
+
+def get_repo_root(config_path: Path, config: dict[str, Any]) -> Path:
+    return resolve_path(config_path.parent.parent.parent, config["paths"]["repo_root"])
+
+
+def get_base_app_root(repo_root: Path, config: dict[str, Any]) -> Path:
+    return resolve_path(repo_root, config["paths"]["base_app_root"])
+
+
+def get_scenarios_root(repo_root: Path, config: dict[str, Any]) -> Path:
+    return ensure_dir(resolve_path(repo_root, config["paths"]["scenarios_root"]))
+
+
+def prepare_scenario_root(
+    repo_root: Path,
+    config: dict[str, Any],
+    scenario_dir_name: str,
+    logger: Any,
+    dry_run: bool,
+) -> Path:
+    base_app_root = get_base_app_root(repo_root, config)
+    scenarios_root = get_scenarios_root(repo_root, config)
+    scenario_root = scenarios_root / scenario_dir_name
+
+    if scenario_root.exists() and (scenario_root / "entry").exists():
+        logger.info("复用现有场景目录: %s", scenario_root)
+        return scenario_root
+
+    if dry_run:
+        logger.info("dry-run 模式，跳过初始化场景目录: %s", scenario_root)
+        return scenario_root
+
+    if scenario_root.exists():
+        shutil.rmtree(scenario_root)
+    shutil.copytree(
+        base_app_root,
+        scenario_root,
+        ignore=shutil.ignore_patterns("build", ".hvigor", "mock-data", "output", "logs", "state", "spec"),
+    )
+    logger.info("已基于 baseApp 初始化场景目录: %s", scenario_root)
+    return scenario_root
+
+
+def build_runtime_paths(scenario_root: Path) -> dict[str, Path]:
+    spec_dir = ensure_dir(scenario_root / "spec")
+    mock_dir = ensure_dir(scenario_root / "mock-data")
+    output_dir = ensure_dir(scenario_root / "output")
+    logs_dir = ensure_dir(scenario_root / "logs")
+    state_dir = ensure_dir(scenario_root / "state")
+    return {
+        "spec_dir": spec_dir,
+        "mock_dir": mock_dir,
+        "output_dir": output_dir,
+        "logs_dir": logs_dir,
+        "state_dir": state_dir,
+        "result_json": output_dir / "result.json",
+        "state_file": state_dir / "runtime.json",
+    }
+
+
+def prepare_logger(runtime_paths: dict[str, Path], scenario_name: str) -> tuple[Any, Path]:
+    log_file = runtime_paths["logs_dir"] / f"pipeline-{sanitize_name(scenario_name)}-{utc_now_compact()}.log"
     logger = setup_logger("dev-pipeline", log_file)
     return logger, log_file
 
@@ -67,20 +133,8 @@ def update_state_status(state: dict[str, Any], status: str) -> dict[str, Any]:
     return state
 
 
-def build_runtime_paths(repo_root: Path, config: dict[str, Any], scenario_key: str) -> dict[str, Path]:
-    result_root = ensure_dir(resolve_path(repo_root, config["paths"]["result_root"]))
-    state_root = ensure_dir(resolve_path(repo_root, config["paths"]["state_root"]))
-    mock_root = ensure_dir(resolve_path(repo_root, config["paths"]["mock_data_root"]))
-    return {
-        "result_json": result_root / f"{scenario_key}.result.json",
-        "state_file": state_root / f"{scenario_key}.runtime.json",
-        "mock_dir": mock_root / scenario_key,
-    }
-
-
-def write_task_prompt_snapshot(repo_root: Path, task_prompt: str) -> Path:
-    spec_root = ensure_dir(repo_root / "dev" / "spec")
-    prompt_path = spec_root / "task_prompt.txt"
+def write_task_prompt_snapshot(runtime_paths: dict[str, Path], task_prompt: str) -> Path:
+    prompt_path = runtime_paths["spec_dir"] / "task_prompt.txt"
     prompt_path.write_text(task_prompt, encoding="utf-8")
     return prompt_path
 
@@ -102,7 +156,7 @@ def ensure_base_branch(
         return
 
     if git_has_local_changes(repo_root):
-        logger.warning("当前工作区存在未提交改动。若影响分支切换，请先提交或暂存后再执行。")
+        logger.warning("当前工作区存在未提交改动。若影响分支切换，请先处理后重试。")
 
     if git_config.get("fetch_all_known_branches", False):
         branches = sorted({app_info["base_branch"] for app_info in app_types.values()})
@@ -114,62 +168,33 @@ def ensure_base_branch(
     run_command(["git", "pull", "--ff-only", remote_name, base_branch], repo_root, logger)
 
 
-def ensure_scenario_branch(
-    repo_root: Path,
-    scenario_branch: str,
-    logger: Any,
-    dry_run: bool,
-) -> None:
-    if dry_run:
-        logger.info("当前为 dry-run，跳过场景分支创建。目标分支: %s", scenario_branch)
-        return
-
-    exists = subprocess.run(
-        ["git", "rev-parse", "--verify", scenario_branch],
-        cwd=str(repo_root),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-        **windows_subprocess_kwargs(),
-    )
-    if exists.returncode == 0:
-        logger.info("场景分支已存在，直接切换: %s", scenario_branch)
-        run_command(["git", "checkout", scenario_branch], repo_root, logger)
-        return
-
-    run_command(["git", "checkout", "-b", scenario_branch], repo_root, logger)
-
-
 def build_prompt_variables(
     input_path: Path,
     scenario_payload: dict[str, Any],
     app_key: str,
     app_info: dict[str, Any],
-    base_branch: str,
-    scenario_branch: str,
-    mock_dir: Path,
-    result_json: Path,
+    branch_name: str,
+    scenario_dir_name: str,
+    scenario_root: Path,
+    runtime_paths: dict[str, Path],
     build_command: str,
+    build_target: str,
 ) -> dict[str, str]:
     return {
         "INPUT_JSON_PATH": str(input_path),
-        "INPUT_JSON_CONTENT": json_dumps(scenario_payload),
+        "INPUT_JSON_CONTENT": json.dumps(scenario_payload, ensure_ascii=False, indent=2),
         "APP_TYPE": app_key,
         "APP_DISPLAY_NAME": str(app_info.get("display_name", app_key)),
-        "BASE_BRANCH": base_branch,
-        "SCENARIO_BRANCH": scenario_branch,
-        "MOCK_DATA_DIR": str(mock_dir),
-        "RESULT_JSON_PATH": str(result_json),
-        "BUILD_COMMAND": build_command,
+        "BASE_BRANCH": branch_name,
+        "BRANCH_NAME": branch_name,
+        "SCENARIO_NAME": scenario_dir_name,
+        "SCENARIO_ROOT": str(scenario_root),
+        "SPEC_DIR": str(runtime_paths["spec_dir"]),
+        "MOCK_DATA_DIR": str(runtime_paths["mock_dir"]),
+        "RESULT_JSON_PATH": str(runtime_paths["result_json"]),
+        "BUILD_TARGET": build_target,
+        "BUILD_COMMAND": f"{build_command} -Target {build_target}",
     }
-
-
-def json_dumps(payload: dict[str, Any]) -> str:
-    import json
-
-    return json.dumps(payload, ensure_ascii=False, indent=2)
 
 
 def summarize_agent_command(command: list[str]) -> str:
@@ -178,10 +203,7 @@ def summarize_agent_command(command: list[str]) -> str:
     return format_command(command)
 
 
-def build_agent_runtime_info(
-    repo_root: Path,
-    config: dict[str, Any],
-) -> dict[str, Any]:
+def build_agent_runtime_info(repo_root: Path, config: dict[str, Any]) -> dict[str, Any]:
     agent_key = config["agent"]["active"]
     agent_definition = config["agent"]["definitions"].get(agent_key, {})
     return {
@@ -265,17 +287,17 @@ def dispatch_agent(
 def start_web_console(
     repo_root: Path,
     config_path: Path,
-    state_file: Path,
+    pipeline_key: str,
     logger: Any,
     dry_run: bool,
-) -> dict[str, Any] | None:
+) -> None:
     command = [
         sys.executable,
         str((repo_root / "dev" / "scripts" / "web_console.py").resolve()),
         "--config",
         str(config_path),
-        "--state-file",
-        str(state_file),
+        "--selected",
+        pipeline_key,
         "--host",
         "127.0.0.1",
         "--port",
@@ -298,16 +320,41 @@ def start_web_console(
         creationflags=creationflags,
         close_fds=True,
     )
+    logger.info("Web 控制台启动命令已下发，默认选中: %s", pipeline_key)
 
-    for _ in range(25):
-        state = load_runtime_state(state_file)
-        web = (state or {}).get("web")
-        if web and web.get("url"):
-            logger.info("Web 控制台已就绪: %s", web["url"])
-            return web
-        time.sleep(0.2)
-    logger.warning("Web 控制台启动中，但尚未回写 URL。")
-    return None
+
+def wait_for_agent_result(
+    state: dict[str, Any],
+    state_file: Path,
+    config: dict[str, Any],
+    logger: Any,
+) -> dict[str, Any]:
+    pid = state["agent"]["pid"]
+    logger.info("已启用 --wait，将等待 Agent 进程结束。PID=%s", pid)
+    try:
+        process = subprocess.Popen(
+            ["powershell", "-Command", f"Wait-Process -Id {pid}"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            **windows_subprocess_kwargs(),
+        )
+        process.wait()
+    except KeyboardInterrupt:
+        logger.warning("收到中断信号，保留状态文件供后续恢复。")
+        raise
+
+    result_json = Path(state["result_json"])
+    if result_json.exists():
+        result_payload = read_json(result_json)
+        success = detect_build_success(result_payload, config["scheduler"]["success_values"])
+        state["status"] = "completed" if success else "agent_finished_waiting_review"
+        state["runtime_ended_at"] = now_local_iso()
+    else:
+        state["status"] = "agent_exited_without_result"
+        state["runtime_ended_at"] = now_local_iso()
+    state["updated_at"] = now_local_iso()
+    update_runtime_state(state_file, state, logger)
+    return state
 
 
 def main() -> int:
@@ -315,16 +362,7 @@ def main() -> int:
     args = parse_args()
     config_path = Path(args.config).resolve()
     config = load_config(config_path)
-    repo_root = resolve_path(config_path.parent.parent.parent, config["paths"]["repo_root"])
-
-    cleanup_targets = [
-        repo_root / "dev" / "logs",
-        repo_root / "dev" / "mock-data",
-        repo_root / "dev" / "spec",
-        repo_root / "dev" / "state",
-    ]
-    for target in cleanup_targets:
-        reset_dir(target)
+    repo_root = get_repo_root(config_path, config)
 
     input_json = args.input_json or config["paths"]["default_input_json"]
     input_path = resolve_path(repo_root, input_json)
@@ -335,31 +373,18 @@ def main() -> int:
     raw_app = scenario_payload.get("app")
     app_key, app_info = normalize_app_key(config, raw_app)
     scenario_id = args.scenario_id or infer_scenario_id(input_path, int(config["git"].get("scenario_id_padding", 3)))
-    scenario_timestamp = now_local_compact_minute()
-    scenario_branch = config["git"]["scenario_branch_format"].format(
-        app_segment=app_info["app_segment"],
-        scenario_id=scenario_id,
-        timestamp=scenario_timestamp,
-    )
-    scenario_key = sanitize_name(f"{app_key}-{scenario_id}")
-
-    logger, log_file = prepare_logger(repo_root, config, scenario_key)
-    logger.info("开始执行 APP 场景自动化编排")
-    logger.info("场景输入: %s", input_path)
-    logger.info("识别 APP 类型: %s (%s)", app_key, app_info.get("display_name", app_key))
-    logger.info("目标场景分支: %s", scenario_branch)
-
-    runtime_paths = build_runtime_paths(repo_root, config, scenario_key)
-    ensure_dir(runtime_paths["mock_dir"])
-    state_file = runtime_paths["state_file"]
+    scenario_dir_name = normalize_scenario_dir_name(scenario_id)
+    scenario_root = get_scenarios_root(repo_root, config) / scenario_dir_name
+    state_file = scenario_root / "state" / "runtime.json"
     existing_state = load_runtime_state(state_file)
+    bootstrap_logger = setup_logger("dev-bootstrap", ensure_dir(repo_root / "tmp") / "bootstrap.log")
+
     if existing_state and not args.force_retry:
+        runtime_paths = build_runtime_paths(scenario_root)
+        logger, log_file = prepare_logger(runtime_paths, scenario_dir_name)
         pid = existing_state.get("agent", {}).get("pid")
         if is_process_running(pid):
             logger.info("检测到已有运行中的 Agent 任务，PID=%s。", pid)
-            web = (existing_state.get("web") or {}).get("url")
-            if web:
-                logger.info("已有 Web 控制台: %s", web)
             if args.resume or args.wait:
                 logger.info("复用已有运行状态，不重复下发。")
                 return 0
@@ -372,37 +397,55 @@ def main() -> int:
 
         logger.warning("检测到历史状态但 Agent 已不在运行。将状态视为可恢复/可重试。")
 
-    base_branch = app_info["base_branch"]
+    branch_name = app_info["base_branch"]
+    ensure_base_branch(repo_root, config, branch_name, bootstrap_logger, args.dry_run)
+    scenario_root = prepare_scenario_root(repo_root, config, scenario_dir_name, bootstrap_logger, args.dry_run)
+    runtime_paths = build_runtime_paths(scenario_root)
+    logger, log_file = prepare_logger(runtime_paths, scenario_dir_name)
+
+    logger.info("开始执行 APP 场景自动化编排")
+    logger.info("场景输入: %s", input_path)
+    logger.info("识别 APP 类型: %s (%s)", app_key, app_info.get("display_name", app_key))
+    logger.info("目标场景目录: %s", scenario_root)
+
     template_path = resolve_path(repo_root, config["paths"]["task_template"])
     template_text = read_text(template_path)
     build_command = config["build"]["command"]
+    build_target = f"{config['paths']['scenarios_root'].replace('\\', '/')}/{scenario_dir_name}"
     prompt_variables = build_prompt_variables(
         input_path=input_path,
         scenario_payload=scenario_payload,
         app_key=app_key,
         app_info=app_info,
-        base_branch=base_branch,
-        scenario_branch=scenario_branch,
-        mock_dir=runtime_paths["mock_dir"],
-        result_json=runtime_paths["result_json"],
+        branch_name=branch_name,
+        scenario_dir_name=scenario_dir_name,
+        scenario_root=scenario_root,
+        runtime_paths=runtime_paths,
         build_command=build_command,
+        build_target=build_target,
     )
     task_prompt = render_template(template_text, prompt_variables)
-    task_prompt_path = write_task_prompt_snapshot(repo_root, task_prompt)
+    task_prompt_path = write_task_prompt_snapshot(runtime_paths, task_prompt)
     logger.info("已输出任务 Prompt 快照: %s", task_prompt_path)
     scenario_question = str(scenario_payload.get("question") or scenario_payload.get("prompt") or "").strip()
 
     task_started_at = now_local_iso()
     state = initialize_inspection(
         {
+            "pipeline_key": scenario_dir_name,
+            "pipeline_type": "scenario",
+            "pipeline_name": scenario_dir_name,
+            "pipeline_root": str(scenario_root),
+            "target_build": build_target,
             "scenario_id": scenario_id,
-            "scenario_key": scenario_key,
+            "scenario_key": scenario_dir_name,
             "scenario_input": str(input_path),
             "scenario_question": scenario_question,
             "app_type": app_key,
             "app_display_name": app_info.get("display_name", app_key),
-            "base_branch": base_branch,
-            "scenario_branch": scenario_branch,
+            "base_branch": branch_name,
+            "branch_name": branch_name,
+            "scenario_branch": branch_name,
             "status": "initialized",
             "created_at": task_started_at,
             "runtime_started_at": task_started_at,
@@ -410,12 +453,14 @@ def main() -> int:
             "updated_at": task_started_at,
             "log_file": str(log_file),
             "mock_data_dir": str(runtime_paths["mock_dir"]),
+            "spec_dir": str(runtime_paths["spec_dir"]),
             "result_json": str(runtime_paths["result_json"]),
+            "state_file": str(state_file),
             "web": {},
             "agent": {
                 "type": config["agent"]["active"],
                 "runtime": build_agent_runtime_info(repo_root, config),
-                "log_path": str(resolve_path(repo_root, config["paths"]["logs_root"]) / f"agent-{scenario_key}-{utc_now_compact()}.log"),
+                "log_path": str(runtime_paths["logs_dir"] / f"agent-{scenario_dir_name}-{utc_now_compact()}.log"),
                 "command": [],
                 "pid": None,
                 "started_at": None,
@@ -424,12 +469,8 @@ def main() -> int:
     )
     update_runtime_state(state_file, state, logger)
 
-    logger.info("准备进行 Git 基础分支同步。")
-    state = update_state_status(state, "git_preparing")
-    update_runtime_state(state_file, state, logger)
-    ensure_base_branch(repo_root, config, base_branch, logger, args.dry_run)
-    logger.info("准备创建/切换场景分支。")
-    ensure_scenario_branch(repo_root, scenario_branch, logger, args.dry_run)
+    logger.info("Git 基础分支与场景目录已就绪。")
+    state["pipeline_root"] = str(scenario_root)
     state = update_state_status(state, "git_ready")
     update_runtime_state(state_file, state, logger)
 
@@ -440,35 +481,15 @@ def main() -> int:
     update_runtime_state(state_file, state, logger)
 
     if not args.no_web:
-        start_web_console(repo_root, config_path, state_file, logger, args.dry_run)
+        start_web_console(repo_root, config_path, scenario_dir_name, logger, args.dry_run)
 
     if args.wait and not args.dry_run:
-        pid = state["agent"]["pid"]
-        logger.info("已启用 --wait，将等待 Agent 进程结束。PID=%s", pid)
         try:
-            process = subprocess.Popen(
-                ["powershell", "-Command", f"Wait-Process -Id {pid}"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                **windows_subprocess_kwargs(),
-            )
-            process.wait()
+            wait_for_agent_result(state, state_file, config, logger)
         except KeyboardInterrupt:
-            logger.warning("收到中断信号，保留状态文件供后续恢复。")
             return 130
 
-        if Path(state["result_json"]).exists():
-            result_payload = read_json(Path(state["result_json"]))
-            success = detect_build_success(result_payload, config["scheduler"]["success_values"])
-            state["status"] = "completed" if success else "agent_finished_waiting_review"
-            state["runtime_ended_at"] = now_local_iso()
-        else:
-            state["status"] = "agent_exited_without_result"
-            state["runtime_ended_at"] = now_local_iso()
-        state["updated_at"] = now_local_iso()
-        update_runtime_state(state_file, state, logger)
-
-    logger.info("自动化下发完成。Web 控制台会继续展示当前任务和巡检状态。")
+    logger.info("自动化下发完成。")
     return 0
 
 

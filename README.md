@@ -1,45 +1,91 @@
 # HarmonyArkUIDemo
 
-A simple HarmonyOS ArkUI (ArkTS) sample app with:
+仓库现在采用两层工程结构：
 
-- A home screen header
-- A button click counter
-- A checklist with toggle state
+- `baseApp/`：基线工程，只保存可复用的基础版本
+- `scenarios/scenarioxxx/`：具体场景工程副本，每个目录独立保存 spec、mock、输出、日志和状态
 
-## Files
+## 构建
 
-- `baseApp/AppScope/app.json5`: app-level metadata
-- `baseApp/entry/src/main/ets/pages/Index.ets`: main ArkUI page
-- `baseApp/entry/src/main/ets/entryability/EntryAbility.ets`: entry ability
-- `baseApp/entry/src/main/module.json5`: module config
+命令行构建入口统一为 `build/build.ps1`，必须显式指定目标工程：
 
-## Run
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build\build.ps1 -Target baseApp
+powershell -ExecutionPolicy Bypass -File .\build\build.ps1 -Target scenarios/scenario001
+```
 
-1. Open the `baseApp` directory in DevEco Studio.
-2. Add or replace the signing files under `baseApp/AppScope`:
-   - `debug.p12`
-   - `debug.cer`
-   - `debug.p7b`
-3. If your SDK version is not `5.0.0(12)`, update `baseApp/build-profile.json5`.
-4. Run on an emulator or device.
+可选参数：
 
-## Build Script
+- `-Clean`
+- `-BuildMode release`
+- `-ConfigPath .\build\build_new.config.json`
 
-- Command line: `powershell -ExecutionPolicy Bypass -File .\build\build.ps1`
-- Double click: `build\build.bat`
-- Clean build: `powershell -ExecutionPolicy Bypass -File .\build\build.ps1 -Clean`
-- Release mode: `powershell -ExecutionPolicy Bypass -File .\build\build.ps1 -BuildMode release`
+构建脚本会：
 
-The script automatically:
+- 优先读取 `build/build_new.config.json`，不存在时回退到 `build/build_new.config.example.json`
+- 将目标工程源码复制到 `tmp/<target>/`
+- 将共享 `build/` 资源一并复制到同一个 `tmp/` 工作区
+- 在 `tmp/` 工作区内执行 `hvigor assembleHap`
+- 从 `tmp/<target>/entry/build/default/outputs/default/` 探测 `.hap` 产物
 
-- uses DevEco Studio's bundled JDK
-- creates the local `.deveco-sdk` compatibility mapping
-- runs `hvigor assembleHap`
-- writes HAP outputs to `baseApp\entry\build\default\outputs\default`
+`build/build.bat` 只是对 `build.ps1` 的透传包装，因此同样支持 `-Target`。
 
-## Next steps
+## 场景流水线
 
-- Add a second page and route navigation
-- Integrate `@ohos.net.http`
-- Persist data locally
-https://contentcenter-vali-drcn.dbankcdn.cn/pvt_2/DeveloperAlliance_package_901_9/9b/v3/0fdyewgcSaSmJXn-PCNYXg/devecostudio-windows-6.0.1.251.zip?HW-CC-KV=V1&HW-CC-Date=20260414T125825Z&HW-CC-Expire=7200&HW-CC-Sign=1BD0E8F162D0324776A4246BB7E03D0F0BD790CE6D8F811A2CC4E70DACFACBF1
+自动化入口：
+
+```powershell
+python dev/scripts/run_pipeline.py --input scenario1.json
+python dev/scripts/run_pipeline.py --input scenario1.json --no-web
+python dev/scripts/run_pipeline.py --input scenario1.json --wait
+```
+
+当前行为：
+
+- 脚本只会同步并切换到匹配的基线分支，不再创建新的场景分支
+- 场景目录默认创建或复用为 `scenarios/scenarioxxx/`
+- 运行态文件全部写入目标场景目录：
+  - `spec/`
+  - `mock-data/`
+  - `output/`
+  - `logs/`
+  - `state/`
+- 自动提交与推送目标为当前匹配分支，提交白名单按当前场景目录动态生成
+
+## Web 控制台
+
+`run_pipeline.py` 默认会启动本地 Web 控制台。控制台会扫描当前分支工作区中的：
+
+- `baseApp`
+- `scenarios/scenarioxxx`
+
+页面支持切换查看不同 pipeline 的状态、日志、产物下载和终止动作。
+
+## 目录约定
+
+```text
+baseApp/
+scenarios/
+  scenario001/
+    spec/
+    mock-data/
+    output/
+    logs/
+    state/
+build/
+dev/
+tmp/
+```
+
+## 配置
+
+主配置文件为 `dev/config/pipeline.config.json`，重点字段：
+
+- `paths.base_app_root`
+- `paths.scenarios_root`
+- `paths.build_root`
+- `git.app_types`
+- `agent.definitions`
+- `scheduler`
+
+首次使用时请复制 `build/build_new.config.example.json` 为 `build/build_new.config.json`，并按本机 DevEco Studio / SDK 路径填写。
