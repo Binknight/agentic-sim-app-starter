@@ -39,13 +39,23 @@ function Get-BuildConfigPath {
         return (Resolve-Path -LiteralPath $ConfigPath).Path
     }
 
-    $local = Join-Path $buildDir 'build_new.config.json'
-    if (Test-Path -LiteralPath $local) {
-        return (Resolve-Path -LiteralPath $local).Path
+    $preferredLocal = Join-Path $buildDir 'build.config.json'
+    if (Test-Path -LiteralPath $preferredLocal) {
+        return (Resolve-Path -LiteralPath $preferredLocal).Path
     }
 
-    $example = Join-Path $buildDir 'build_new.config.example.json'
-    return (Resolve-Path -LiteralPath $example).Path
+    $legacyLocal = Join-Path $buildDir 'build_new.config.json'
+    if (Test-Path -LiteralPath $legacyLocal) {
+        return (Resolve-Path -LiteralPath $legacyLocal).Path
+    }
+
+    $preferredExample = Join-Path $buildDir 'build.config.example.json'
+    if (Test-Path -LiteralPath $preferredExample) {
+        return (Resolve-Path -LiteralPath $preferredExample).Path
+    }
+
+    $legacyExample = Join-Path $buildDir 'build_new.config.example.json'
+    return (Resolve-Path -LiteralPath $legacyExample).Path
 }
 
 function Read-BuildConfig {
@@ -54,6 +64,9 @@ function Read-BuildConfig {
     $obj = $raw | ConvertFrom-Json
 
     $devEcoRoot = Expand-EnvPath $obj.devEcoStudioRoot
+    if ([string]::IsNullOrWhiteSpace($devEcoRoot) -and -not [string]::IsNullOrWhiteSpace($env:DEVECO_STUDIO_ROOT)) {
+        $devEcoRoot = Expand-EnvPath $env:DEVECO_STUDIO_ROOT
+    }
     $sdkRel = if ($obj.PSObject.Properties['sdkRelativePath']) { $obj.sdkRelativePath } else { 'sdk\default' }
     $compatRoot = Expand-EnvPath $obj.compatSdkRoot
     $hvigorPath = $null
@@ -283,8 +296,8 @@ function Copy-Workspace {
 $targetInfo = Get-TargetInfo -RawTarget $Target
 $config = Read-BuildConfig
 $devecoRoot = $config.DevEcoRoot
-if ([string]::IsNullOrWhiteSpace($devecoRoot)) {
-    throw 'devEcoStudioRoot is empty. Edit build/build_new.config.json (copy from build/build_new.config.example.json if needed).'
+if ([string]::IsNullOrWhiteSpace($devecoRoot) -or $devecoRoot -match '%[^%]+%') {
+    throw 'devEcoStudioRoot is empty or unresolved. Set env DEVECO_STUDIO_ROOT, or edit build/build.config.json (copy from build/build.config.example.json if needed).'
 }
 
 $sdkRoot = Join-Path $devecoRoot $config.SdkRelativePath
@@ -298,7 +311,7 @@ if ([string]::IsNullOrWhiteSpace($hvigorEntry)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($config.CompatSdkRoot)) {
-    throw 'compatSdkRoot is empty. Set it in build/build_new.config.json (e.g. under %LOCALAPPDATA%, not under the project .deveco-sdk folder).'
+    throw 'compatSdkRoot is empty. Set it in build/build.config.json (e.g. under %LOCALAPPDATA%, not under the project .deveco-sdk folder).'
 }
 
 $compatSdkRoot = $config.CompatSdkRoot

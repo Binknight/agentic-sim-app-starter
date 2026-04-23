@@ -18,11 +18,11 @@ powershell -ExecutionPolicy Bypass -File .\build\build.ps1 -Target scenarios/sce
 
 - `-Clean`
 - `-BuildMode release`
-- `-ConfigPath .\build\build_new.config.json`
+- `-ConfigPath .\build\build.config.json`
 
 构建脚本会：
 
-- 优先读取 `build/build_new.config.json`，不存在时回退到 `build/build_new.config.example.json`
+- 优先读取 `build/build.config.json`，不存在时回退到 `build/build_new.config.json`，再回退到 `build/build.config.example.json`
 - 将目标工程源码复制到 `tmp/<target>/`
 - 将共享 `build/` 资源一并复制到同一个 `tmp/` 工作区
 - 在 `tmp/` 工作区内执行 `hvigor assembleHap`
@@ -88,4 +88,4 @@ tmp/
 - `agent.definitions`
 - `scheduler`
 
-首次使用时请复制 `build/build_new.config.example.json` 为 `build/build_new.config.json`，并按本机 DevEco Studio / SDK 路径填写。
+首次使用时请复制 `build/build.config.example.json` 为 `build/build.config.json`。`devEcoStudioRoot` 默认通过环境变量 `DEVECO_STUDIO_ROOT` 注入，例如先执行 `$env:DEVECO_STUDIO_ROOT = 'C:\Program Files\Huawei\DevEco Studio'`，再运行构建脚本。
