@@ -1,0 +1,14 @@
+{
+  "popupTitle": "限时红包福利",
+  "popupSubtitle": "点击领取最高 88 元出行红包",
+  "popupIcon": "🧧",
+  "buttonText": "点击领取",
+  "buttonColor": "#FFD700",
+  "pageTitle": "新春出行红包大派送",
+  "pageCover": "🎉",
+  "pageDetail": "即日起至本月底，所有用户均可领取出行专属红包。红包可用于酒店、机票、火车票、门票和度假套餐。每个用户限领一次，先到先得，领完即止。",
+  "pageTerms": "1. 红包有效期 7 天\n2. 不可与其他优惠叠加使用\n3. 最终解释权归途屿旅行所有",
+  "pageCtaText": "立即使用红包",
+  "pageCtaColor": "#E85D04",
+  "accentColor": "#D64545"
+}
