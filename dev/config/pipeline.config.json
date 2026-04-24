@@ -40,14 +40,7 @@
       },
       "delivery": {
         "display_name": "外卖类APP",
-        "aliases": [
-          "delivery",
-          "waimai",
-          "food-delivery",
-          "takeout",
-          "takeaway",
-          "food"
-        ],
+        "aliases": ["delivery", "waimai", "food-delivery", "takeout", "takeaway", "food"],
         "base_branch": "prod-delivery-app",
         "app_segment": "delivery"
       }
