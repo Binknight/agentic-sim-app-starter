@@ -4,11 +4,14 @@ import json
 import logging
 import os
 import re
+import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+
+BEIJING_TZ = timezone(timedelta(hours=8), name="UTC+08:00")
 
 
 def configure_stdio() -> None:
@@ -19,7 +22,32 @@ def configure_stdio() -> None:
 
 
 def now_local_iso() -> str:
-    return datetime.now().astimezone().isoformat(timespec="seconds")
+    return datetime.now(BEIJING_TZ).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def format_display_time(value: Any) -> str | None:
+    if value is None:
+        return None
+
+    text = str(value).strip()
+    if not text:
+        return None
+
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        try:
+            parsed = datetime.strptime(text, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            return text
+
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(BEIJING_TZ)
+    return parsed.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def now_local_compact_minute() -> str:
+    return datetime.now(BEIJING_TZ).strftime("%Y%m%d%H%M")
 
 
 def utc_now_compact() -> str:
@@ -34,6 +62,13 @@ def resolve_path(repo_root: Path, value: str) -> Path:
 
 
 def ensure_dir(path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def reset_dir(path: Path) -> Path:
+    if path.exists():
+        shutil.rmtree(path)
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -62,6 +97,8 @@ def setup_logger(name: str, log_file: Path) -> logging.Logger:
     ensure_dir(log_file.parent)
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
+    for handler in logger.handlers[:]:
+        handler.close()
     logger.handlers.clear()
     logger.propagate = False
 
@@ -76,6 +113,25 @@ def setup_logger(name: str, log_file: Path) -> logging.Logger:
     logger.addHandler(stream_handler)
 
     return logger
+
+
+def setup_stream_logger(name: str, stream: Any = None) -> logging.Logger:
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
+    logger.handlers.clear()
+    logger.propagate = False
+
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    stream_handler = logging.StreamHandler(stream or sys.stdout)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+    return logger
+
+
+def windows_subprocess_kwargs() -> dict[str, Any]:
+    if os.name != "nt":
+        return {}
+    return {"creationflags": subprocess.CREATE_NO_WINDOW}
 
 
 def run_command(
@@ -93,6 +149,7 @@ def run_command(
         encoding="utf-8",
         errors="replace",
         check=False,
+        **windows_subprocess_kwargs(),
     )
     if result.stdout.strip():
         logger.info("标准输出:\n%s", result.stdout.rstrip())
@@ -157,6 +214,7 @@ def is_process_running(pid: int | None) -> bool:
         encoding="utf-8",
         errors="replace",
         check=False,
+        **windows_subprocess_kwargs(),
     )
     return str(pid) in result.stdout
 
@@ -170,6 +228,7 @@ def git_has_local_changes(repo_root: Path) -> bool:
         encoding="utf-8",
         errors="replace",
         check=False,
+        **windows_subprocess_kwargs(),
     )
     return bool(result.stdout.strip())
 
@@ -185,6 +244,7 @@ def ensure_remote(repo_root: Path, git_config: dict[str, Any], logger: logging.L
         encoding="utf-8",
         errors="replace",
         check=False,
+        **windows_subprocess_kwargs(),
     )
     if result.returncode != 0:
         logger.info("检测到远端 %s 不存在，开始自动添加。", remote_name)

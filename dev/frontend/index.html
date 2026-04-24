@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pipeline Console</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="card hero-card">
+        <div class="hero-grid">
+          <div class="hero-main">
+            <p class="eyebrow">Simulation Pipeline</p>
+            <div class="selector-row">
+              <label for="pipeline-select">场景选择</label>
+              <select id="pipeline-select"></select>
+            </div>
+            <div class="hero-title-row">
+              <h1 id="task-title">加载中</h1>
+              <a
+                id="artifact-download-button"
+                class="icon-button artifact-download-button is-hidden"
+                href="#"
+                download
+                aria-label="下载 HAP 安装包"
+                title="下载 HAP 安装包"
+              >
+                <span>仿真APP</span>
+              </a>
+            </div>
+            <p class="hero-copy" id="scenario-question">-</p>
+          </div>
+        </div>
+
+        <div class="metric-strip metric-strip-wide">
+          <article class="metric-card">
+            <span>流水线状态</span>
+            <strong id="status-pill">-</strong>
+          </article>
+          <article class="metric-card">
+            <span>仿真 APP 基线</span>
+            <strong id="base-branch">-</strong>
+          </article>
+          <article class="metric-card">
+            <span>当前分支</span>
+            <strong id="branch-name">-</strong>
+          </article>
+          <article class="metric-card">
+            <span>仿真 APP 类型</span>
+            <strong id="app-type">-</strong>
+          </article>
+          <article class="metric-card">
+            <span>场景编号</span>
+            <strong id="scenario-id">-</strong>
+          </article>
+          <article class="metric-card">
+            <span>最近更新时间</span>
+            <strong id="updated-at">-</strong>
+          </article>
+        </div>
+
+        <div class="workspace-row">
+          <article class="metric-card workspace-card">
+            <div class="metric-inline workspace-label-row">
+              <span>工作空间</span>
+              <button id="workspace-copy-button" class="icon-button" type="button" aria-label="复制工作空间" title="复制工作空间">⧉</button>
+            </div>
+            <strong id="workspace">-</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="dashboard-body">
+        <section class="middle-row">
+          <article class="card progress-card compact-card">
+            <div class="card-header">
+              <div>
+                <h2>任务进度</h2>
+                <p class="card-note">初始化到完成的水平推进轨迹</p>
+              </div>
+              <strong class="card-state" id="progress-percent">0%</strong>
+            </div>
+
+            <div class="progress-summary">
+              <div class="progress-current">
+                <span>当前阶段</span>
+                <strong id="progress-label">-</strong>
+              </div>
+            </div>
+
+            <div class="progress-track-shell">
+              <div class="progress-track"><div id="progress-bar"></div></div>
+            </div>
+
+            <ol class="progress-steps" id="steps"></ol>
+          </article>
+
+          <article class="card agent-card compact-card">
+            <div class="card-header">
+              <div>
+                <h2>Agent 信息</h2>
+                <p class="card-note">执行环境、模型参数与会话信息</p>
+              </div>
+              <strong class="card-state" id="agent-running-state">-</strong>
+            </div>
+            <div class="info-grid plain-grid">
+              <div class="info-cell"><span>代理</span><strong id="agent-name">-</strong></div>
+              <div class="info-cell"><span>Agent PID</span><strong id="agent-pid">-</strong></div>
+              <div class="info-cell"><span>模型</span><strong id="agent-model">-</strong></div>
+              <div class="info-cell"><span>提供商</span><strong id="agent-provider">-</strong></div>
+              <div class="info-cell"><span>审批</span><strong id="agent-approval">-</strong></div>
+              <div class="info-cell"><span>沙箱权限</span><strong id="agent-sandbox">-</strong></div>
+              <div class="info-cell"><span>推理等级</span><strong id="agent-reasoning-effort">-</strong></div>
+              <div class="info-cell"><span>推理摘要</span><strong id="agent-reasoning-summary">-</strong></div>
+              <div class="info-cell info-cell-wide"><span>会话 ID</span><strong id="agent-session-id">-</strong></div>
+            </div>
+          </article>
+
+          <aside class="card control-card danger">
+            <div class="card-header">
+              <div>
+                <h2>任务控制</h2>
+                <p class="card-note">巡检态势与终止控制</p>
+              </div>
+              <strong class="card-state" id="inspection-status">-</strong>
+            </div>
+
+            <div class="info-grid plain-grid control-meta">
+              <div class="info-cell info-cell-wide"><span>运行时长</span><strong id="runtime-duration">-</strong></div>
+              <div class="info-cell"><span>巡检轮次</span><strong id="inspection-cycles">-</strong></div>
+              <div class="info-cell"><span>最近检查</span><strong id="inspection-last">-</strong></div>
+              <div class="info-cell info-cell-wide"><span>开始时间</span><strong id="started-at">-</strong></div>
+              <div class="info-cell info-cell-wide"><span>巡检说明</span><strong id="inspection-message">-</strong></div>
+            </div>
+
+            <div class="control-actions">
+              <button id="terminate-button" type="button">终止任务</button>
+              <button id="shutdown-console-button" class="secondary-button" type="button">关闭控制台</button>
+              <p class="action-hint" id="terminate-hint"></p>
+            </div>
+          </aside>
+        </section>
+
+        <section class="card logs-card">
+          <div class="card-header">
+            <div>
+              <h2>日志区</h2>
+              <p class="card-note">流水线日志与 Agent 全量日志</p>
+            </div>
+          </div>
+
+          <div class="logs-grid">
+            <article class="log-panel">
+              <div class="log-head">
+                <h3>流水线日志</h3>
+              </div>
+              <pre id="pipeline-log">加载中...</pre>
+            </article>
+            <article class="log-panel">
+              <div class="log-head">
+                <h3>Agent 日志</h3>
+              </div>
+              <pre id="agent-log">加载中...</pre>
+            </article>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
