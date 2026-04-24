@@ -89,3 +89,26 @@ tmp/
 - `scheduler`
 
 首次使用时请复制 `build/build.config.example.json` 为 `build/build.config.json`。`devEcoStudioRoot` 默认通过环境变量 `DEVECO_STUDIO_ROOT` 注入，例如先执行 `$env:DEVECO_STUDIO_ROOT = 'C:\Program Files\Huawei\DevEco Studio'`，再运行构建脚本。
+
+签名配置不再写死在 `build-profile.json5` 中。构建脚本会在复制到 `tmp/<target>/` 后，从以下环境变量注入签名字段：
+
+- `OHOS_CERT_PATH`
+- `OHOS_KEY_ALIAS`
+- `OHOS_KEY_PASSWORD`
+- `OHOS_PROFILE_PATH`
+- `OHOS_SIGN_ALG`（可选，默认 `SHA256withECDSA`）
+- `OHOS_STORE_FILE`
+- `OHOS_STORE_PASSWORD`
+
+PowerShell 示例：
+
+```powershell
+$env:OHOS_CERT_PATH = 'C:\Users\me\.ohos\config\default.cer'
+$env:OHOS_KEY_ALIAS = 'debugKey'
+$env:OHOS_KEY_PASSWORD = '***'
+$env:OHOS_PROFILE_PATH = 'C:\Users\me\.ohos\config\default.p7b'
+$env:OHOS_STORE_FILE = 'C:\Users\me\.ohos\config\default.p12'
+$env:OHOS_STORE_PASSWORD = '***'
+```
+
+如果这些环境变量都未设置，构建脚本会保留模板占位值；如果只设置了一部分，则会直接报错，避免生成不完整的签名配置。

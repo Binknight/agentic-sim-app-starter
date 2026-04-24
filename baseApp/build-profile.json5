@@ -22,13 +22,13 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "C:\\Users\\z30048514\\.ohos\\config\\default_baseApp_WVaJPEw1X4c8vVesk6OP511PpkGev1sdFwFVZWp8NSo=.cer",
-          "keyAlias": "debugKey",
-          "keyPassword": "0000001B36F7F437E7C2DE8CE121337CF865AD35B89E30CD4A91B89B7661763CDC469E039BEAE88A30495A",
-          "profile": "C:\\Users\\z30048514\\.ohos\\config\\default_baseApp_WVaJPEw1X4c8vVesk6OP511PpkGev1sdFwFVZWp8NSo=.p7b",
-          "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\z30048514\\.ohos\\config\\default_baseApp_WVaJPEw1X4c8vVesk6OP511PpkGev1sdFwFVZWp8NSo=.p12",
-          "storePassword": "0000001BDDBE87F8BF18D5A44D008DF53FE08E3F0772BE0EA623A809F4CB55FC0638D165F83D965B705301"
+          "certpath": "__OHOS_CERT_PATH__",
+          "keyAlias": "__OHOS_KEY_ALIAS__",
+          "keyPassword": "__OHOS_KEY_PASSWORD__",
+          "profile": "__OHOS_PROFILE_PATH__",
+          "signAlg": "__OHOS_SIGN_ALG__",
+          "storeFile": "__OHOS_STORE_FILE__",
+          "storePassword": "__OHOS_STORE_PASSWORD__"
         }
       }
     ]

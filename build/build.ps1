@@ -293,6 +293,77 @@ function Copy-Workspace {
     }
 }
 
+function ConvertTo-JsonStringLiteral {
+    param([string]$Value)
+
+    return ($Value | ConvertTo-Json -Compress)
+}
+
+function Update-BuildProfileSigningFromEnv {
+    param([string]$ProjectRoot)
+
+    $buildProfilePath = Join-Path $ProjectRoot 'build-profile.json5'
+    if (-not (Test-Path -LiteralPath $buildProfilePath)) {
+        return
+    }
+
+    $envMap = [ordered]@{
+        '__OHOS_CERT_PATH__'      = [Environment]::GetEnvironmentVariable('OHOS_CERT_PATH')
+        '__OHOS_KEY_ALIAS__'      = [Environment]::GetEnvironmentVariable('OHOS_KEY_ALIAS')
+        '__OHOS_KEY_PASSWORD__'   = [Environment]::GetEnvironmentVariable('OHOS_KEY_PASSWORD')
+        '__OHOS_PROFILE_PATH__'   = [Environment]::GetEnvironmentVariable('OHOS_PROFILE_PATH')
+        '__OHOS_SIGN_ALG__'       = [Environment]::GetEnvironmentVariable('OHOS_SIGN_ALG')
+        '__OHOS_STORE_FILE__'     = [Environment]::GetEnvironmentVariable('OHOS_STORE_FILE')
+        '__OHOS_STORE_PASSWORD__' = [Environment]::GetEnvironmentVariable('OHOS_STORE_PASSWORD')
+    }
+
+    $requiredEnvNames = @(
+        'OHOS_CERT_PATH',
+        'OHOS_KEY_ALIAS',
+        'OHOS_KEY_PASSWORD',
+        'OHOS_PROFILE_PATH',
+        'OHOS_STORE_FILE',
+        'OHOS_STORE_PASSWORD'
+    )
+
+    $hasSigningEnv = $false
+    foreach ($name in $requiredEnvNames) {
+        if (-not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+            $hasSigningEnv = $true
+            break
+        }
+    }
+
+    if (-not $hasSigningEnv -and [string]::IsNullOrWhiteSpace($envMap['__OHOS_SIGN_ALG__'])) {
+        Write-Host "Signing env vars not set; keeping template signing config in $buildProfilePath"
+        return
+    }
+
+    $missingEnvNames = @()
+    foreach ($name in $requiredEnvNames) {
+        if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+            $missingEnvNames += $name
+        }
+    }
+
+    if ($missingEnvNames.Count -gt 0) {
+        throw "Signing env vars are incomplete. Missing: $($missingEnvNames -join ', ')"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($envMap['__OHOS_SIGN_ALG__'])) {
+        $envMap['__OHOS_SIGN_ALG__'] = 'SHA256withECDSA'
+    }
+
+    $template = Get-Content -LiteralPath $buildProfilePath -Raw -Encoding UTF8
+    foreach ($token in $envMap.Keys) {
+        $template = $template.Replace("`"$token`"", (ConvertTo-JsonStringLiteral $envMap[$token]))
+    }
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($buildProfilePath, $template, $utf8NoBom)
+    Write-Host "Injected signing config into $buildProfilePath from environment variables."
+}
+
 $targetInfo = Get-TargetInfo -RawTarget $Target
 $config = Read-BuildConfig
 $devecoRoot = $config.DevEcoRoot
@@ -335,6 +406,7 @@ $sdkPkgJson = Build-SdkPkgJson -SdkPkg $config.SdkPkg
 Ensure-CompatSdk -CompatSdkRoot $compatSdkRoot -OpenharmonyTarget $openharmonyTarget -HmsTarget $hmsTarget -SdkPkgJson $sdkPkgJson
 
 Copy-Workspace -Source $targetInfo.TargetPath -Destination $targetInfo.WorkspaceTarget
+Update-BuildProfileSigningFromEnv -ProjectRoot $targetInfo.WorkspaceTarget
 Copy-Workspace -Source $buildDir -Destination (Join-Path $targetInfo.WorkspacePath 'build')
 Ensure-HvigorPackages -ProjectRoot $targetInfo.WorkspacePath -DevEcoRoot $devecoRoot
 
